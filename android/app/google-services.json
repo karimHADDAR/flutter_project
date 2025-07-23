@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "45434324122",
+    "firebase_url": "https://database-chantiergo-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "database-chantiergo",
+    "storage_bucket": "database-chantiergo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45434324122:android:1ad4573e0e4c5b8bd88b23",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-eIOT3D3AE1T0c6VdriEaXJM8OFg8-AM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
