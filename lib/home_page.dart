@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'add_project_page.dart';
 import 'request_materials_page.dart';
 
@@ -12,6 +15,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool showMenu = false;
   List<Map<String, dynamic>> projects = [];
+  String? username;
+  List<String> roles = [];
+  String? userData;
 
   void toggleMenu() {
     setState(() {
@@ -19,10 +25,58 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // You can replace this with your actual logout logic (e.g. clear token, etc.)
-  void logout() {
-    // TODO: Clear stored token/session here if you use one
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  Future<void> loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final name = prefs.getString('username');
+    final roleList = prefs.getStringList('roles');
+
+    if (token == null) {
+      logout();
+      return;
+    }
+
+    setState(() {
+      username = name ?? "Utilisateur";
+      roles = roleList ?? [];
+    });
+
+    try {
+      // Example: access a protected endpoint
+      final response = await http.get(
+        Uri.parse('localhost:8080/api/test/pdg'), // change to your valid endpoint
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          userData = response.body;
+        });
+      } else {
+        setState(() {
+          userData = 'Accès non autorisé ou erreur de serveur.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        userData = 'Erreur de connexion à l’API sécurisée.';
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserInfo();
   }
 
   Widget _buildFeatureCard({
@@ -118,7 +172,8 @@ class _HomePageState extends State<HomePage> {
                     : 'Dernier projet ajouté : ${latestProject['name']}',
                 style: TextStyle(
                   fontSize: 16,
-                  color: latestProject == null ? Colors.black54 : Colors.black87,
+                  color:
+                      latestProject == null ? Colors.black54 : Colors.black87,
                 ),
               ),
             ),
@@ -158,20 +213,26 @@ class _HomePageState extends State<HomePage> {
         children: [
           SafeArea(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 50),
-                  const Text(
-                    'bienvenue à ChantierGO!',
-                    style: TextStyle(
+                  Text(
+                    'Bienvenue, ${username ?? "..." } 👷‍♂️',
+                    style: const TextStyle(
                       color: Colors.black87,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  if (roles.isNotEmpty)
+                    Text(
+                      'Rôle : ${roles.join(", ")}',
+                      style: const TextStyle(
+                          color: Colors.black54, fontSize: 14),
+                    ),
                   const SizedBox(height: 30),
 
                   _buildLatestProjectCard(),
@@ -187,8 +248,7 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () async {
                       final result = await Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const AddProjectPage()),
+                        MaterialPageRoute(builder: (context) => const AddProjectPage()),
                       );
                       if (result != null && result is Map<String, dynamic>) {
                         setState(() {
@@ -209,8 +269,7 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const RequestMaterialsPage()),
+                        MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
                       );
                     },
                   ),
@@ -236,23 +295,19 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 120),
                     ListTile(
                       leading: const Icon(Icons.person, color: Colors.white),
-                      title:
-                          const Text("Profile", style: TextStyle(color: Colors.white)),
+                      title: const Text("Profil", style: TextStyle(color: Colors.white)),
                       onTap: toggleMenu,
                     ),
                     ListTile(
                       leading: const Icon(Icons.shopping_cart, color: Colors.white),
-                      title: const Text("Ongoing Orders",
-                          style: TextStyle(color: Colors.white)),
+                      title: const Text("Commandes", style: TextStyle(color: Colors.white)),
                       onTap: toggleMenu,
                     ),
                     const Spacer(),
                     ListTile(
                       leading: const Icon(Icons.logout, color: Colors.white),
-                      title: const Text("Logout", style: TextStyle(color: Colors.white)),
-                      onTap: () {
-                        logout();
-                      },
+                      title: const Text("Déconnexion", style: TextStyle(color: Colors.white)),
+                      onTap: logout,
                     ),
                   ],
                 ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,17 +11,17 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController idController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
 
   Future<void> login() async {
-    final email = idController.text.trim();
+    final username = usernameController.text.trim();
     final password = passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      showError("Identifiant et mot de passe requis.");
+    if (username.isEmpty || password.isEmpty) {
+      showError("Nom d'utilisateur et mot de passe requis.");
       return;
     }
 
@@ -28,16 +29,26 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/auth/login'), // ← Replace <your-ip>
+        Uri.parse('http://10.0.2.2:8080/api/auth/login'), // Replace with your backend IP
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': email,
+          'username': username,
           'password': password,
         }),
       );
 
       if (response.statusCode == 200) {
-        // Optional: handle response body (token, user data, etc.)
+        final data = jsonDecode(response.body);
+
+        final token = data['token'];
+        final username = data['username'];
+        final roles = List<String>.from(data['roles']);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await prefs.setString('username', username);
+        await prefs.setStringList('roles', roles);
+
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         showError("Échec de la connexion. Vérifiez vos identifiants.");
@@ -68,9 +79,9 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
-              controller: idController,
+              controller: usernameController,
               decoration: const InputDecoration(
-                labelText: 'Identifiant',
+                labelText: "Nom d'utilisateur",
                 border: OutlineInputBorder(),
               ),
             ),
