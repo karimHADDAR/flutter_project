@@ -48,9 +48,8 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      // Example: access a protected endpoint
       final response = await http.get(
-        Uri.parse('localhost:8080/api/test/pdg'), // change to your valid endpoint
+        Uri.parse('http://10.0.2.2:8080/api/test/pdg'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -137,7 +136,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 onPressed: onPressed,
                 child: const Text(
-                  'Get Started',
+                  'Commencer',
                   style: TextStyle(color: Colors.white),
                 ),
               ),
@@ -205,6 +204,118 @@ class _HomePageState extends State<HomePage> {
           );
   }
 
+  Widget buildRoleBasedContent() {
+    if (roles.contains('PDG')) {
+      return Column(
+        children: [
+          const SizedBox(height: 20),
+          Text(
+            'Bienvenue, PDG 👑',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(userData ?? 'Chargement des données...'),
+        ],
+      );
+    }
+
+    if (roles.contains('DEMANDEUR')) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFeatureCard(
+            icon: Icons.build,
+            iconBgColor: Colors.orange.shade50,
+            iconColor: Colors.orange,
+            title: 'Demander des Matériaux',
+            description: 'Commandez facilement les matériaux nécessaires.',
+            buttonColor: Colors.orange,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Résumé de votre dernière demande :',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          projects.isEmpty
+              ? const Text(
+                  'Aucune demande enregistrée.',
+                  style: TextStyle(color: Colors.black54),
+                )
+              : Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Projet : ${projects.last['name']}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 6),
+                        Text('Description : ${projects.last['description'] ?? 'N/A'}'),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Matériaux demandés : ${projects.last['materials']?.length ?? 0}',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ],
+      );
+    }
+
+    if (roles.contains('Acheteur/financier')) {
+      return Column(
+        children: [
+          _buildFeatureCard(
+            icon: Icons.apartment,
+            iconBgColor: Colors.blue.shade50,
+            iconColor: Colors.blue.shade800,
+            title: 'Ajouter un Projet',
+            description: 'Gérez les projets de construction.',
+            buttonColor: Colors.blue,
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddProjectPage()),
+              );
+              if (result != null && result is Map<String, dynamic>) {
+                setState(() {
+                  projects.add(result);
+                });
+              }
+            },
+          ),
+          _buildFeatureCard(
+            icon: Icons.build,
+            iconBgColor: Colors.orange.shade50,
+            iconColor: Colors.orange,
+            title: 'Demander des Matériaux',
+            description: 'Commandez les matériaux requis.',
+            buttonColor: Colors.orange,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
+              );
+            },
+          ),
+        ],
+      );
+    }
+
+    return const Center(child: Text("Aucun rôle défini."));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const SizedBox(height: 50),
                   Text(
-                    'Bienvenue, ${username ?? "..." } 👷‍♂️',
+                    'Bienvenue, ${username ?? "..."} 👷‍♂️',
                     style: const TextStyle(
                       color: Colors.black87,
                       fontSize: 22,
@@ -231,56 +342,19 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       'Rôle : ${roles.join(", ")}',
                       style: const TextStyle(
-                          color: Colors.black54, fontSize: 14),
+                        color: Colors.black54,
+                        fontSize: 14,
+                      ),
                     ),
                   const SizedBox(height: 30),
-
                   _buildLatestProjectCard(),
-
-                  _buildFeatureCard(
-                    icon: Icons.apartment,
-                    iconBgColor: Colors.blue.shade50,
-                    iconColor: Colors.blue.shade800,
-                    title: 'Ajouter un Projet',
-                    description:
-                        'Créez un nouveau projet de construction et gérez tous les aspects de votre chantier en un seul endroit.',
-                    buttonColor: Colors.blue,
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddProjectPage()),
-                      );
-                      if (result != null && result is Map<String, dynamic>) {
-                        setState(() {
-                          projects.add(result);
-                        });
-                      }
-                    },
-                  ),
-
-                  _buildFeatureCard(
-                    icon: Icons.build,
-                    iconBgColor: Colors.orange.shade50,
-                    iconColor: Colors.orange,
-                    title: 'Demander des Matériaux',
-                    description:
-                        'Commandez facilement les matériaux de construction dont vous avez besoin pour vos projets.',
-                    buttonColor: Colors.orange,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
-                      );
-                    },
-                  ),
-
+                  buildRoleBasedContent(),
                   const SizedBox(height: 16),
                   _buildProjectList(),
                 ],
               ),
             ),
           ),
-
           if (showMenu)
             Positioned(
               top: 0,
@@ -313,7 +387,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
           Positioned(
             top: 20,
             left: 16,
@@ -322,7 +395,7 @@ class _HomePageState extends State<HomePage> {
                 onTap: toggleMenu,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.white70,
                     shape: BoxShape.circle,
                   ),
