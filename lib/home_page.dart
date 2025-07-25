@@ -1,3 +1,4 @@
+// Imports remain the same
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool showMenu = false;
   List<Map<String, dynamic>> projects = [];
+  List<Map<String, dynamic>> demandes = []; // New: list of material requests
+
   String? username;
   List<String> roles = [];
   String? userData;
@@ -76,6 +79,106 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     loadUserInfo();
+  }
+
+  // Simulate saving request
+  void saveDemande(Map<String, dynamic> demande) {
+    setState(() {
+      demandes.add(demande);
+    });
+  }
+
+  // Toggle approval status
+  void toggleApproval(int index) {
+    setState(() {
+      final currentStatus = demandes[index]['approved'] ?? false;
+      demandes[index]['approved'] = !currentStatus;
+    });
+  }
+
+  bool get isValidator {
+    return roles.any((r) =>
+        r.contains("Directeur des achats") || r.contains("Responsable des achats"));
+  }
+
+  Widget _buildDemandeList() {
+    if (demandes.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 30),
+        const Text(
+          'Demandes de matériaux :',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        ...demandes.asMap().entries.map((entry) {
+          final index = entry.key;
+          final demande = entry.value;
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.request_page),
+              title: Text('Projet : ${demande['project']}'),
+              subtitle: Text(
+                  'Matériaux : ${demande['materials'].join(', ')}\nStatut : ${demande['approved'] == true ? "Approuvé" : "En attente"}'),
+              trailing: isValidator
+                  ? IconButton(
+                      icon: Icon(
+                        demande['approved'] == true ? Icons.check_circle : Icons.cancel,
+                        color: demande['approved'] == true ? Colors.green : Colors.red,
+                      ),
+                      onPressed: () => toggleApproval(index),
+                    )
+                  : null,
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget buildRoleBasedContent() {
+    if (roles.contains('PDG')) {
+      return Column(
+        children: [
+          const SizedBox(height: 20),
+          Text(
+            'Bienvenue, PDG 👑',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(userData ?? 'Chargement des données...'),
+        ],
+      );
+    }
+
+    if (roles.contains('DEMANDEUR')) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFeatureCard(
+            icon: Icons.build,
+            iconBgColor: Colors.orange.shade50,
+            iconColor: Colors.orange,
+            title: 'Demander des Matériaux',
+            description: 'Commandez facilement les matériaux nécessaires.',
+            buttonColor: Colors.orange,
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
+              );
+              if (result != null && result is Map<String, dynamic>) {
+                saveDemande(result);
+              }
+            },
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox();
   }
 
   Widget _buildFeatureCard({
@@ -147,175 +250,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildLatestProjectCard() {
-    final latestProject = projects.isNotEmpty ? projects.last : null;
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Icon(
-              latestProject == null ? Icons.info_outline : Icons.task_alt,
-              color: latestProject == null ? Colors.grey : Colors.green,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                latestProject == null
-                    ? 'Aucun projet ajouté pour l’instant.'
-                    : 'Dernier projet ajouté : ${latestProject['name']}',
-                style: TextStyle(
-                  fontSize: 16,
-                  color:
-                      latestProject == null ? Colors.black54 : Colors.black87,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProjectList() {
-    return projects.isEmpty
-        ? const SizedBox()
-        : Expanded(
-            child: ListView.builder(
-              itemCount: projects.length,
-              itemBuilder: (context, index) {
-                final project = projects[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  child: ListTile(
-                    leading: const Icon(Icons.business),
-                    title: Text(project['name']),
-                    subtitle: Text(project['description'] ?? ''),
-                    trailing: Text('${project['materials'].length} matériaux'),
-                  ),
-                );
-              },
-            ),
-          );
-  }
-
-  Widget buildRoleBasedContent() {
-    if (roles.contains('PDG')) {
-      return Column(
-        children: [
-          const SizedBox(height: 20),
-          Text(
-            'Bienvenue, PDG 👑',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Text(userData ?? 'Chargement des données...'),
-        ],
-      );
-    }
-
-    if (roles.contains('DEMANDEUR')) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildFeatureCard(
-            icon: Icons.build,
-            iconBgColor: Colors.orange.shade50,
-            iconColor: Colors.orange,
-            title: 'Demander des Matériaux',
-            description: 'Commandez facilement les matériaux nécessaires.',
-            buttonColor: Colors.orange,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Résumé de votre dernière demande :',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          projects.isEmpty
-              ? const Text(
-                  'Aucune demande enregistrée.',
-                  style: TextStyle(color: Colors.black54),
-                )
-              : Card(
-                  margin: const EdgeInsets.only(top: 8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Projet : ${projects.last['name']}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 6),
-                        Text('Description : ${projects.last['description'] ?? 'N/A'}'),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Matériaux demandés : ${projects.last['materials']?.length ?? 0}',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-        ],
-      );
-    }
-
-    if (roles.contains('Acheteur/financier')) {
-      return Column(
-        children: [
-          _buildFeatureCard(
-            icon: Icons.apartment,
-            iconBgColor: Colors.blue.shade50,
-            iconColor: Colors.blue.shade800,
-            title: 'Ajouter un Projet',
-            description: 'Gérez les projets de construction.',
-            buttonColor: Colors.blue,
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddProjectPage()),
-              );
-              if (result != null && result is Map<String, dynamic>) {
-                setState(() {
-                  projects.add(result);
-                });
-              }
-            },
-          ),
-          _buildFeatureCard(
-            icon: Icons.build,
-            iconBgColor: Colors.orange.shade50,
-            iconColor: Colors.orange,
-            title: 'Demander des Matériaux',
-            description: 'Commandez les matériaux requis.',
-            buttonColor: Colors.orange,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
-              );
-            },
-          ),
-        ],
-      );
-    }
-
-    return const Center(child: Text("Aucun rôle défini."));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -325,8 +259,7 @@ class _HomePageState extends State<HomePage> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: ListView(
                 children: [
                   const SizedBox(height: 50),
                   Text(
@@ -347,10 +280,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   const SizedBox(height: 30),
-                  _buildLatestProjectCard(),
                   buildRoleBasedContent(),
-                  const SizedBox(height: 16),
-                  _buildProjectList(),
+                  _buildDemandeList(),
                 ],
               ),
             ),
@@ -372,12 +303,6 @@ class _HomePageState extends State<HomePage> {
                       title: const Text("Profil", style: TextStyle(color: Colors.white)),
                       onTap: toggleMenu,
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.shopping_cart, color: Colors.white),
-                      title: const Text("Commandes", style: TextStyle(color: Colors.white)),
-                      onTap: toggleMenu,
-                    ),
-                    const Spacer(),
                     ListTile(
                       leading: const Icon(Icons.logout, color: Colors.white),
                       title: const Text("Déconnexion", style: TextStyle(color: Colors.white)),

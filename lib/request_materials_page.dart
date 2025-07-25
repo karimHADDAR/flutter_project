@@ -58,8 +58,7 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
               children: [
                 TextField(
                   controller: nameController,
-                  decoration:
-                      const InputDecoration(labelText: "Nom du matériau"),
+                  decoration: const InputDecoration(labelText: "Nom du matériau"),
                 ),
                 TextField(
                   controller: unitController,
@@ -98,6 +97,38 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
         );
       },
     );
+  }
+
+  void _handleSubmit() {
+    final projectName = projectNameController.text.trim();
+
+    if (projectName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez entrer un nom de projet.")),
+      );
+      return;
+    }
+
+    final selectedMaterials = quantities.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => "${entry.key} (${entry.value} ${units[entry.key]})")
+        .toList();
+
+    if (selectedMaterials.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez sélectionner au moins un matériau.")),
+      );
+      return;
+    }
+
+    // Pass data back to previous screen (HomePage)
+    final demandeData = {
+      'project': projectName,
+      'materials': selectedMaterials,
+      'approved': false,
+    };
+
+    Navigator.pop(context, demandeData);
   }
 
   @override
@@ -161,8 +192,7 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -234,11 +264,9 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
                                   children: [
                                     Text(
                                       entry.key,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w500),
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
                                     ),
-                                    Text(
-                                        "${entry.value} ${units[entry.key] ?? ''}"),
+                                    Text("${entry.value} ${units[entry.key] ?? ''}"),
                                   ],
                                 ))
                             .toList(),
@@ -271,17 +299,17 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
 
               /// Submit
               ElevatedButton(
-                onPressed: () {
-                  // TODO: handle submission
-                },
+                onPressed: _handleSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.lightBlueAccent,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text("Envoyer la Demande",
-                    style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  "Envoyer la Demande",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
