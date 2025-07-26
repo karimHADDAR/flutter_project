@@ -1,4 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class MaterialRequestItem {
+  final String materialName;
+  final int quantity;
+  final String unit;
+
+  MaterialRequestItem({
+    required this.materialName,
+    required this.quantity,
+    required this.unit,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'materialName': materialName,
+      'quantity': quantity,
+      'unit': unit,
+    };
+  }
+}
+
+class MaterialRequest {
+  final String projectName;
+  final bool approved;
+  final String requestedBy;
+  final List<MaterialRequestItem> items;
+
+  MaterialRequest({
+    required this.projectName,
+    required this.requestedBy,
+    required this.items,
+    this.approved = false,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'projectName': projectName,
+      'approved': approved,
+      'requestedBy': requestedBy,
+      'items': items.map((item) => item.toJson()).toList(),
+    };
+  }
+}
 
 class RequestMaterialsPage extends StatefulWidget {
   const RequestMaterialsPage({super.key});
@@ -27,6 +72,7 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
   };
 
   final TextEditingController projectNameController = TextEditingController();
+  final TextEditingController requestedByController = TextEditingController();
 
   void increment(String material) {
     setState(() {
@@ -99,8 +145,9 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
     );
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     final projectName = projectNameController.text.trim();
+    final requestedBy = requestedByController.text.trim();
 
     if (projectName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,26 +156,59 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
       return;
     }
 
-    final selectedMaterials = quantities.entries
+    if (requestedBy.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Veuillez entrer le nom du demandeur.")),
+      );
+      return;
+    }
+
+    final selectedItems = quantities.entries
         .where((entry) => entry.value > 0)
-        .map((entry) => "${entry.key} (${entry.value} ${units[entry.key]})")
+        .map((entry) => MaterialRequestItem(
+              materialName: entry.key,
+              quantity: entry.value,
+              unit: units[entry.key] ?? '',
+            ))
         .toList();
 
-    if (selectedMaterials.isEmpty) {
+    if (selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Veuillez sélectionner au moins un matériau.")),
       );
       return;
     }
 
-    // Pass data back to previous screen (HomePage)
-    final demandeData = {
-      'project': projectName,
-      'materials': selectedMaterials,
-      'approved': false,
-    };
+    final materialRequest = MaterialRequest(
+      projectName: projectName,
+      requestedBy: requestedBy,
+      approved: false,
+      items: selectedItems,
+    );
 
-    Navigator.pop(context, demandeData);
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/api/material-requests'), // Replace with your IP
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(materialRequest.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Demande envoyée avec succès.")),
+        );
+        Navigator.pop(context);
+      } else {
+        print("Erreur ${response.statusCode}: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur: ${response.statusCode}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur lors de l'envoi: $e")),
+      );
+    }
   }
 
   @override
@@ -140,7 +220,6 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
           padding: const EdgeInsets.all(16.0),
           child: ListView(
             children: [
-              /// Header
               Row(
                 children: [
                   IconButton(
@@ -161,7 +240,6 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
               ),
               const SizedBox(height: 20),
 
-              /// Materials title + Add button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -171,8 +249,7 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
                       SizedBox(width: 8),
                       Text(
                         "Matériaux Disponibles",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ],
                   ),
@@ -185,7 +262,6 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
               ),
               const SizedBox(height: 8),
 
-              /// Material cards
               ...quantities.keys.map((material) {
                 return Card(
                   shape: RoundedRectangleBorder(
@@ -230,7 +306,6 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
 
               const SizedBox(height: 20),
 
-              /// Résumé section
               const Text(
                 "Résumé Sélection",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -259,13 +334,11 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: selectedItems
                             .map((entry) => Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      entry.key,
-                                      style: const TextStyle(fontWeight: FontWeight.w500),
-                                    ),
+                                    Text(entry.key,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w500)),
                                     Text("${entry.value} ${units[entry.key] ?? ''}"),
                                   ],
                                 ))
@@ -278,7 +351,6 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
 
               const SizedBox(height: 20),
 
-              /// Project info
               const Text(
                 "Informations Projet",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -294,10 +366,20 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: requestedByController,
+                decoration: InputDecoration(
+                  labelText: "Nom du Demandeur",
+                  hintText: "Ex: John Doe",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 20),
 
-              /// Submit
               ElevatedButton(
                 onPressed: _handleSubmit,
                 style: ElevatedButton.styleFrom(

@@ -1,9 +1,7 @@
-// Imports remain the same
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'add_project_page.dart';
 import 'request_materials_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,7 +14,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool showMenu = false;
   List<Map<String, dynamic>> projects = [];
-  List<Map<String, dynamic>> demandes = []; // New: list of material requests
+  List<Map<String, dynamic>> demandes = [];
 
   String? username;
   List<String> roles = [];
@@ -81,14 +79,12 @@ class _HomePageState extends State<HomePage> {
     loadUserInfo();
   }
 
-  // Simulate saving request
   void saveDemande(Map<String, dynamic> demande) {
     setState(() {
       demandes.add(demande);
     });
   }
 
-  // Toggle approval status
   void toggleApproval(int index) {
     setState(() {
       final currentStatus = demandes[index]['approved'] ?? false;
@@ -102,7 +98,33 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDemandeList() {
-    if (demandes.isEmpty) return const SizedBox();
+    if (demandes.isEmpty) {
+      if (roles.contains("Responsable des achats")) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 30),
+            const Text(
+              'Demandes de matériaux :',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              color: Colors.grey.shade100,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "Aucune demande disponible pour le moment.",
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      return const SizedBox(); // No display for other roles
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,19 +143,23 @@ class _HomePageState extends State<HomePage> {
               leading: const Icon(Icons.request_page),
               title: Text('Projet : ${demande['project']}'),
               subtitle: Text(
-                  'Matériaux : ${demande['materials'].join(', ')}\nStatut : ${demande['approved'] == true ? "Approuvé" : "En attente"}'),
+                'Matériaux : ${demande['materials'].join(', ')}\nStatut : ${demande['approved'] == true ? "Approuvé" : "En attente"}'),
               trailing: isValidator
                   ? IconButton(
                       icon: Icon(
-                        demande['approved'] == true ? Icons.check_circle : Icons.cancel,
-                        color: demande['approved'] == true ? Colors.green : Colors.red,
+                        demande['approved'] == true
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        color: demande['approved'] == true
+                            ? Colors.green
+                            : Colors.red,
                       ),
                       onPressed: () => toggleApproval(index),
                     )
                   : null,
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -167,7 +193,8 @@ class _HomePageState extends State<HomePage> {
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const RequestMaterialsPage()),
+                MaterialPageRoute(
+                    builder: (context) => const RequestMaterialsPage()),
               );
               if (result != null && result is Map<String, dynamic>) {
                 saveDemande(result);
@@ -258,7 +285,8 @@ class _HomePageState extends State<HomePage> {
         children: [
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
               child: ListView(
                 children: [
                   const SizedBox(height: 50),
@@ -300,12 +328,14 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 120),
                     ListTile(
                       leading: const Icon(Icons.person, color: Colors.white),
-                      title: const Text("Profil", style: TextStyle(color: Colors.white)),
+                      title: const Text("Profil",
+                          style: TextStyle(color: Colors.white)),
                       onTap: toggleMenu,
                     ),
                     ListTile(
                       leading: const Icon(Icons.logout, color: Colors.white),
-                      title: const Text("Déconnexion", style: TextStyle(color: Colors.white)),
+                      title: const Text("Déconnexion",
+                          style: TextStyle(color: Colors.white)),
                       onTap: logout,
                     ),
                   ],
