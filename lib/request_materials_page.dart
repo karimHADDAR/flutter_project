@@ -194,10 +194,20 @@ class _RequestMaterialsPageState extends State<RequestMaterialsPage> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        final summary = {
+          'projectName': projectName,
+          'requestedBy': requestedBy,
+          'items': selectedItems.map((item) => {
+            'materialName': item.materialName,
+            'quantity': item.quantity,
+            'unit': item.unit,
+          }).toList(),
+          'status': 'En cours de traitement',
+        };
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Demande envoyée avec succès.")),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, summary); // Return summary to HomePage
       } else {
         print("Erreur ${response.statusCode}: ${response.body}");
         ScaffoldMessenger.of(context).showSnackBar(

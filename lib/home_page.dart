@@ -98,68 +98,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildDemandeList() {
-    if (demandes.isEmpty) {
-      if (roles.contains("Responsable des achats")) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 30),
-            const Text(
-              'Demandes de matériaux :',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Card(
-              color: Colors.grey.shade100,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  "Aucune demande disponible pour le moment.",
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ),
-            ),
-          ],
-        );
-      }
-      return const SizedBox(); // No display for other roles
-    }
-
+    if (demandes.isEmpty) return const SizedBox();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 30),
         const Text(
-          'Demandes de matériaux :',
+          'Demandes en cours :',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-        ...demandes.asMap().entries.map((entry) {
-          final index = entry.key;
-          final demande = entry.value;
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.request_page),
-              title: Text('Projet : ${demande['project']}'),
-              subtitle: Text(
-                'Matériaux : ${demande['materials'].join(', ')}\nStatut : ${demande['approved'] == true ? "Approuvé" : "En attente"}'),
-              trailing: isValidator
-                  ? IconButton(
-                      icon: Icon(
-                        demande['approved'] == true
-                            ? Icons.check_circle
-                            : Icons.cancel,
-                        color: demande['approved'] == true
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                      onPressed: () => toggleApproval(index),
-                    )
-                  : null,
+        ...demandes.map((demande) => Card(
+          child: ListTile(
+            leading: const Icon(Icons.hourglass_top, color: Colors.orange),
+            title: Text('Projet : ${demande['projectName']}'),
+            subtitle: Text(
+              'Demandé par : ${demande['requestedBy'] ?? ''}\n'
+              'Matériaux : ${(demande['items'] as List).map((item) => '${item['materialName']} (${item['quantity']} ${item['unit']})').join(', ')}\n'
+              'Statut : ${demande['status'] ?? 'En cours de traitement'}',
             ),
-          );
-        }),
+          ),
+        )),
       ],
     );
   }
@@ -196,11 +155,16 @@ class _HomePageState extends State<HomePage> {
                 MaterialPageRoute(
                     builder: (context) => const RequestMaterialsPage()),
               );
+              print('Returned result: $result'); // <-- Add this line
               if (result != null && result is Map<String, dynamic>) {
-                saveDemande(result);
+                setState(() {
+                  demandes.add(result);
+                });
               }
             },
           ),
+          // Add the summary/resume list here for Demandeur
+          _buildDemandeList(),
         ],
       );
     }
@@ -309,7 +273,6 @@ class _HomePageState extends State<HomePage> {
                     ),
                   const SizedBox(height: 30),
                   buildRoleBasedContent(),
-                  _buildDemandeList(),
                 ],
               ),
             ),
